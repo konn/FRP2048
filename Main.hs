@@ -45,21 +45,19 @@ keyDownD  = 40
 dic :: [(Int, Direction)]
 dic = [(keyLeftD,  LeftD)
       ,(keyUpD,    UpD)
-      ,(keyDownD,  DownD)
       ,(keyRightD, RightD)
+      ,(keyDownD,  DownD)
       ]
 
 readerT :: (Typeable a, Typeable1 m, SetMember Lift (Lift m) r, Member (Reader a) r) => (a -> m b) -> Eff r b
 readerT f = lift . f =<< ask
-
-type Drawer = (->) Context
-
+#if MIN_VERSION_base(4,7,0)
+deriving instance Typeable Context
+#else
 instance Typeable Context where
   typeOf _ = mkTyConApp (mkTyCon3 "ghcjs-prim" "GHCJS.Prim" "JSRef")
              [mkTyConApp (mkTyCon3 "ghcjs-canvas" "JavaScript.Canvas" "Canvas_") []]
-
-runDrawer :: Context -> Drawer a -> a
-runDrawer cxt f = f cxt
+#endif
 
 main :: IO ()
 main = runLift $ flip runFresh (0 :: Int) $ do
