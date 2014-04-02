@@ -9,20 +9,16 @@
 module Main where
 import           Control.Applicative       ((<$>))
 import           Control.Eff
-import           Control.Eff.Fresh         (fresh)
-import           Control.Eff.Fresh         (runFresh)
-import           Control.Eff.Fresh         (Fresh)
+import           Control.Eff.Fresh         (Fresh, fresh, runFresh)
 import           Control.Eff.Lift          (Lift, lift, runLift)
 import           Control.Eff.Random
-import           Control.Eff.Reader.Strict (Reader, ask)
-import           Control.Eff.Reader.Strict (runReader)
+import           Control.Eff.Reader.Strict (Reader, ask, runReader)
 import           Control.Monad             (forM_, void, (<=<))
 import           Data.Default
 import           Data.Monoid               ((<>))
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
-import           Data.Typeable             (Typeable (..), Typeable1, mkTyCon3,
-                                            mkTyConApp)
+import           Data.Typeable             (Typeable (..), mkTyCon3, mkTyConApp)
 import           FRP.Sodium
 import qualified FRP.Sodium                as FRP
 import           GHCJS.Foreign
@@ -30,6 +26,12 @@ import           GHCJS.Types
 import           JavaScript.Canvas
 import           JavaScript.JQuery         hiding (not)
 import           Puzzle
+
+#if MIN_VERSION_base(4,7,0)
+#define Typeable1 Typeable
+#else
+import Data.Typeable (Typeable1 (..))
+#endif
 
 keyLeftD :: Int
 keyLeftD = 37
