@@ -60,7 +60,10 @@ main = runLift $ flip runFresh (0 :: Int) $ do
   body  <- lift $ select "body"
   label <- lift $ select "<div />"
   c <- lift $ select "<canvas id='theCanvas' />"
-  lift $ appendJQuery c body
+  lift $ do
+    setWidth  180 c
+    setHeight 180 c
+    appendJQuery c body
   cxt <- lift $ getContext =<< indexArray 0 (castRef c)
   bd <- evalRandIO newBoard
   runReader (drawBoard bd) (Cxt cxt)
@@ -77,12 +80,11 @@ drawBoard b = do
   forM_ (withIndex b) $ \((i, j), mint) -> do
     readerT save
     readerT $ strokeStyle 0 0 0 1
-    readerT $ strokeRect (fromIntegral i * 41)
-      (fromIntegral j * 41)
-      (fromIntegral i * 41 + 40) (fromIntegral j*41 + 40)
+    readerT $ strokeRect (fromIntegral i * 45) (fromIntegral j * 45)
+      (fromIntegral i * 45 + 40) (fromIntegral j*45 + 40)
     readerT $ fillStyle 0 0 0 1
     readerT $ maybe (const $ return ())
-      (\t -> fillText (T.pack $ show t) (fromIntegral i*41+20) (fromIntegral j*41+20)) mint
+      (\t -> fillText (T.pack $ show t) (fromIntegral i*45+20) (fromIntegral j*45+20)) mint
     readerT $ restore
 
 keyDownEvent :: JQuery -> IO (FRP.Event Int)
