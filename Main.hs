@@ -49,15 +49,11 @@ dic = [(keyLeftD,  LeftD)
       ,(keyDownD,  DownD)
       ]
 
-readerT :: (Typeable a, Typeable1 m, SetMember Lift (Lift m) r, Member (Reader a) r) => (a -> m b) -> Eff r b
-readerT f = lift . f =<< ask
-#if MIN_VERSION_base(4,7,0)
-deriving instance Typeable JSRef
-#else
-instance Typeable Context where
-  typeOf _ = mkTyConApp (mkTyCon3 "ghcjs-prim" "GHCJS.Prim" "JSRef")
-             [mkTyConApp (mkTyCon3 "ghcjs-canvas" "JavaScript.Canvas" "Canvas_") []]
-#endif
+newtype Cxt  = Cxt { unwrapCxt :: Context } deriving (Typeable)
+
+readerT :: (Typeable1 m, SetMember Lift (Lift m) r, Member (Reader Cxt) r)
+        => (Context -> m b) -> Eff r b
+readerT f = lift . f . unwrapCxt =<< ask
 
 main :: IO ()
 main = runLift $ flip runFresh (0 :: Int) $ do
@@ -67,7 +63,7 @@ main = runLift $ flip runFresh (0 :: Int) $ do
   lift $ appendJQuery c body
   cxt <- lift $ getContext =<< indexArray 0 (castRef c)
   bd <- evalRandIO newBoard
-  runReader (drawBoard bd) cxt
+  runReader (drawBoard bd) (Cxt cxt)
   chk <- reactiveCheckbox body "disabled"
   lift $ do
     appendJQuery label body
@@ -76,7 +72,7 @@ main = runLift $ flip runFresh (0 :: Int) $ do
       void $ setText (T.pack $ show dir) label
   return ()
 
-drawBoard :: (SetMember Lift (Lift IO) r, Member (Reader Context) r) => Board -> Eff r ()
+drawBoard :: (SetMember Lift (Lift IO) r, Member (Reader Cxt) r) => Board -> Eff r ()
 drawBoard b = do
   forM_ (withIndex b) $ \((i, j), mint) -> do
     readerT save
