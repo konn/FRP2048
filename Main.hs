@@ -18,7 +18,7 @@ import           Data.Default
 import           Data.Monoid               ((<>))
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
-import           Data.Typeable             (Typeable (..), mkTyCon3, mkTyConApp)
+import           Data.Typeable             (Typeable (..))
 import           FRP.Sodium
 import qualified FRP.Sodium                as FRP
 import           GHCJS.Foreign
@@ -77,13 +77,12 @@ drawBoard b = do
   forM_ (withIndex b) $ \((i, j), mint) -> do
     readerT save
     readerT $ strokeStyle 0 0 0 1
-    readerT $ strokeRect (fromIntegral i * 21)
-      (fromIntegral j * 21)
-      (fromIntegral i * 21 + 20) (fromIntegral j*21 + 20)
-    readerT $ textAlign Center
+    readerT $ strokeRect (fromIntegral i * 41)
+      (fromIntegral j * 41)
+      (fromIntegral i * 41 + 40) (fromIntegral j*41 + 40)
     readerT $ fillStyle 0 0 0 1
     readerT $ maybe (const $ return ())
-      (\t -> fillText (T.pack $ show t) (fromIntegral i*21+10) (fromIntegral j*21+10)) mint
+      (\t -> fillText (T.pack $ show t) (fromIntegral i*41+20) (fromIntegral j*41+20)) mint
     readerT $ restore
 
 keyDownEvent :: JQuery -> IO (FRP.Event Int)
