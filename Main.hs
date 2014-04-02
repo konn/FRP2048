@@ -52,7 +52,7 @@ dic = [(keyLeftD,  LeftD)
 readerT :: (Typeable a, Typeable1 m, SetMember Lift (Lift m) r, Member (Reader a) r) => (a -> m b) -> Eff r b
 readerT f = lift . f =<< ask
 #if MIN_VERSION_base(4,7,0)
-deriving instance Typeable Context
+deriving instance Typeable JSRef
 #else
 instance Typeable Context where
   typeOf _ = mkTyConApp (mkTyCon3 "ghcjs-prim" "GHCJS.Prim" "JSRef")
