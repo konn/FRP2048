@@ -73,7 +73,7 @@ readerT :: (Typeable1 m, SetMember Lift (Lift m) r, Member (Reader Cxt) r)
 readerT f = lift . f . unwrapCxt =<< ask
 
 main :: IO ()
-main = runLift $ flip runFresh (0 :: Int) $ evalRandIO $ do
+main = runLift $ evalRandIO $ do
   bd <- newBoard
   lift $ do
     body <-  select "body"
@@ -96,6 +96,7 @@ drawBoard :: (SetMember Lift (Lift IO) r, Member (Reader Cxt) r) => Board -> Eff
 drawBoard b = do
   forM_ (withIndex b) $ \((i, j), mint) -> do
     readerT save
+    readerT $ clearRect 0 0 180 180
     readerT $ strokeStyle 0 0 0 1
     readerT $ strokeRect (fromIntegral i * 45) (fromIntegral j * 45) 40 40
     readerT $ fillStyle 0 0 0 1
