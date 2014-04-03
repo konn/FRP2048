@@ -73,30 +73,27 @@ readerT :: (Typeable1 m, SetMember Lift (Lift m) r, Member (Reader Cxt) r)
 readerT f = lift . f . unwrapCxt =<< ask
 
 main :: IO ()
-main = runLift $ flip runFresh (0 :: Int) $ do
-  bd <- evalRandIO newBoard
-  flip runReader (GS bd 0) $ do
-    body  <- lift $ select "body"
-    label <- lift $ select "<div />"
-    (canvas, cxt) <- lift $ do
-      c <- select "<canvas id='theCanvas' width='180px' height='180px' />"
-      appendJQuery c body
-      canvas <- indexArray 0 (castRef c)
-      setWidth  180 c
-      setHeight 180 c
-      (,) canvas <$> getContext canvas
-    runReader drawBoard (Cxt cxt)
-    lift $ do
-      appendJQuery label body
-      event <- keyDownEvent body
-      sync $ listen (filterJust $ flip lookup dic <$> event) $ \dir -> do
-        void $ setText (T.pack $ show dir) label
-    return ()
+main = runLift $ flip runFresh (0 :: Int) $ evalRandIO $ do
+  bd <- newBoard
+  lift $ do
+    body <-  select "body"
+    label <- select "<div />"
+    c <- select "<canvas id='theCanvas' width='180px' height='180px' />"
+    appendJQuery c body
+    cxt <- getContext =<< indexArray 0 (castRef c)
+    setWidth  180 c
+    setHeight 180 c
+    appendJQuery label body
+    keyEvent <- keyDownEvent body
+    sync $ do
+      let updEvent = (fst.) . shift <$> filterJust (flip lookup dic <$> keyEvent)
+      bhv <- accum bd updEvent
+      listen (value bhv) $ \b ->
+        runLift $ runReader (drawBoard b) (Cxt cxt)
+  return ()
 
-drawBoard :: (SetMember Lift (Lift IO) r, Member (Reader GameState) r,
-              Member (Reader Cxt) r) => Eff r ()
-drawBoard = do
-  b <- view board <$> ask
+drawBoard :: (SetMember Lift (Lift IO) r, Member (Reader Cxt) r) => Board -> Eff r ()
+drawBoard b = do
   forM_ (withIndex b) $ \((i, j), mint) -> do
     readerT save
     readerT $ strokeStyle 0 0 0 1
