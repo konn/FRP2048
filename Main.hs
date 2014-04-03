@@ -79,13 +79,11 @@ main = runLift $ flip runFresh (0 :: Int) $ do
     body  <- lift $ select "body"
     label <- lift $ select "<div />"
     (canvas, cxt) <- lift $ do
-      c <- select "<canvas id='theCanvas' />"
+      c <- select "<canvas id='theCanvas' width='180px' height='180px' />"
       appendJQuery c body
       canvas <- indexArray 0 (castRef c)
       setWidth  180 c
       setHeight 180 c
-      setStyleWidth 180 canvas
-      setStyleHeight 180 canvas
       (,) canvas <$> getContext canvas
     runReader drawBoard (Cxt cxt)
     lift $ do
