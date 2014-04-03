@@ -25,13 +25,16 @@ import           GHCJS.Foreign
 import           GHCJS.Types
 import           JavaScript.Canvas
 import           JavaScript.JQuery         hiding (not)
-import           Puzzle
+
+import Lens
+import Puzzle
 
 #if MIN_VERSION_base(4,7,0)
 #define Typeable1 Typeable
 #else
 import Data.Typeable (Typeable1 (..))
 #endif
+import Control.Lens (view)
 
 keyLeftD :: Int
 keyLeftD = 37
@@ -57,31 +60,33 @@ readerT f = lift . f . unwrapCxt =<< ask
 
 main :: IO ()
 main = runLift $ flip runFresh (0 :: Int) $ do
-  body  <- lift $ select "body"
-  label <- lift $ select "<div />"
-  c <- lift $ select "<canvas id='theCanvas' />"
-  lift $ do
-    setWidth  180 c
-    setHeight 180 c
-    appendJQuery c body
-  cxt <- lift $ getContext =<< indexArray 0 (castRef c)
   bd <- evalRandIO newBoard
-  runReader (drawBoard bd) (Cxt cxt)
-  chk <- reactiveCheckbox body "disabled"
-  lift $ do
-    appendJQuery label body
-    event <- keyDownEvent body
-    sync $ listen (flip lookup dic <$> event `gate` (not <$> chk)) $ \dir -> do
-      void $ setText (T.pack $ show dir) label
-  return ()
+  flip runReader (GS bd 0) $ do
+    body  <- lift $ select "body"
+    label <- lift $ select "<div />"
+    c <- lift $ select "<canvas id='theCanvas' />"
+    lift $ do
+      setWidth  180 c
+      setHeight 180 c
+      appendJQuery c body
+    cxt <- lift $ getContext =<< indexArray 0 (castRef c)
+    runReader drawBoard (Cxt cxt)
+    chk <- reactiveCheckbox body "disabled"
+    lift $ do
+      appendJQuery label body
+      event <- keyDownEvent body
+      sync $ listen (filterJust $ flip lookup dic <$> event `gate` (not <$> chk)) $ \dir -> do
+        void $ setText (T.pack $ show dir) label
+    return ()
 
-drawBoard :: (SetMember Lift (Lift IO) r, Member (Reader Cxt) r) => Board -> Eff r ()
-drawBoard b = do
+drawBoard :: (SetMember Lift (Lift IO) r, Member (Reader GameState) r,
+              Member (Reader Cxt) r) => Eff r ()
+drawBoard = do
+  b <- view board <$> ask
   forM_ (withIndex b) $ \((i, j), mint) -> do
     readerT save
     readerT $ strokeStyle 0 0 0 1
-    readerT $ strokeRect (fromIntegral i * 45) (fromIntegral j * 45)
-      (fromIntegral i * 45 + 40) (fromIntegral j*45 + 40)
+    readerT $ strokeRect (fromIntegral i * 45) (fromIntegral j * 45) 40 40
     readerT $ fillStyle 0 0 0 1
     readerT $ maybe (const $ return ())
       (\t -> fillText (T.pack $ show t) (fromIntegral i*45+20) (fromIntegral j*45+20)) mint
