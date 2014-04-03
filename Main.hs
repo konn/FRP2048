@@ -45,6 +45,20 @@ keyRightD = 39
 keyDownD :: Int
 keyDownD  = 40
 
+#ifdef __GHCJS__
+foreign import javascript unsafe "$2.style.height = $1"
+  setStyleHeight  :: Int -> Canvas -> IO ()
+foreign import javascript unsafe "$2.style.width = $1"
+  setStyleWidth  :: Int -> Canvas -> IO ()
+#else
+setStyleHeight :: Int -> Canvas -> IO ()
+setStyleHeight _ _ = error "jsffi"
+
+setStyleWidth :: Int -> Canvas -> IO ()
+setStyleWidth _ _ = error "jsffi"
+#endif
+
+
 dic :: [(Int, Direction)]
 dic = [(keyLeftD,  LeftD)
       ,(keyUpD,    UpD)
@@ -64,18 +78,20 @@ main = runLift $ flip runFresh (0 :: Int) $ do
   flip runReader (GS bd 0) $ do
     body  <- lift $ select "body"
     label <- lift $ select "<div />"
-    c <- lift $ select "<canvas id='theCanvas' />"
-    lift $ do
+    (canvas, cxt) <- lift $ do
+      c <- select "<canvas id='theCanvas' />"
+      appendJQuery c body
+      canvas <- indexArray 0 (castRef c)
       setWidth  180 c
       setHeight 180 c
-      appendJQuery c body
-    cxt <- lift $ getContext =<< indexArray 0 (castRef c)
+      setStyleWidth 180 canvas
+      setStyleHeight 180 canvas
+      (,) canvas <$> getContext canvas
     runReader drawBoard (Cxt cxt)
-    chk <- reactiveCheckbox body "disabled"
     lift $ do
       appendJQuery label body
       event <- keyDownEvent body
-      sync $ listen (filterJust $ flip lookup dic <$> event `gate` (not <$> chk)) $ \dir -> do
+      sync $ listen (filterJust $ flip lookup dic <$> event) $ \dir -> do
         void $ setText (T.pack $ show dir) label
     return ()
 
