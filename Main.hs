@@ -94,7 +94,7 @@ main = runLift $ evalRandIO $ do
 
 drawBoard :: (SetMember Lift (Lift IO) r, Member (Reader Cxt) r) => Board -> Eff r ()
 drawBoard b = do
-  forM_ (withIndex b) $ \((i, j), mint) -> do
+  forM_ (withIndex b) $ \((j, i), mint) -> do
     readerT save
     readerT $ clearRect 0 0 180 180
     readerT $ strokeStyle 0 0 0 1
