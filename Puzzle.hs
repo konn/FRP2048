@@ -1,8 +1,9 @@
 {-# LANGUAGE DeriveDataTypeable, FlexibleContexts, FlexibleInstances, GADTs  #-}
 {-# LANGUAGE MultiParamTypeClasses, NoMonomorphismRestriction, PatternGuards #-}
 {-# LANGUAGE RankNTypes, TemplateHaskell, TupleSections, TypeFamilies        #-}
-module Puzzle (Direction(..), Board, toLists, fromLists, newBlock, shift, blanks
-              ,randomPlace, newBoard, board, score, withIndex) where
+module Puzzle (Direction(..), Board, GameState(..), toLists, fromLists, newBlock
+              , shift, blanks, randomPlace, newBoard, board, score, withIndex
+              ) where
 import Control.Applicative  ((<$>))
 import Control.Arrow        (second)
 import Control.Eff          (Eff, Member)
@@ -19,7 +20,7 @@ import Data.Typeable
 
 newtype Board =
   Board { _getBoard :: [[Maybe Int]]
-        } deriving (Eq, Read, Ord)
+        } deriving (Eq, Read, Ord, Typeable)
 
 toLists :: Board -> [[Maybe Int]]
 toLists = _getBoard
