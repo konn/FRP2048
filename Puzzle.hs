@@ -4,18 +4,17 @@
 module Puzzle (Direction(..), Board, GameState(..), toLists, fromLists, newBlock
               , shift, blanks, randomPlace, newBoard, board, score, withIndex
               ) where
-import Control.Applicative  ((<$>))
-import Control.Arrow        (second)
-import Control.Eff          (Eff, Member)
-import Control.Eff.Random   hiding (next)
-import Control.Lens         (Index, IxValue, Ixed (..), makeLenses, (&), (.~))
-import Control.Monad        (liftM)
-import Control.Monad.Writer (tell)
-import Control.Monad.Writer (runWriter)
-import Control.Monad.Writer (Writer)
-import Data.List            (transpose)
-import Data.Maybe           (catMaybes, fromJust, isNothing)
-import Data.Monoid          (Sum (..))
+import Control.Applicative   ((<$>))
+import Control.Arrow         (second)
+import Control.Eff           (Eff, Member)
+import Control.Eff.Exception (Exc, runExc, throwExc)
+import Control.Eff.Random    hiding (next)
+import Control.Lens          (Index, IxValue, Ixed (..), makeLenses, (&), (.~))
+import Control.Monad         (liftM, when)
+import Control.Monad.Writer  (Writer, runWriter, tell)
+import Data.List             (transpose)
+import Data.Maybe            (catMaybes, isNothing)
+import Data.Monoid           (Sum (..))
 import Data.Typeable
 
 newtype Board =
@@ -34,17 +33,20 @@ data GameState = GS { _board :: Board
 
 makeLenses ''GameState
 
-newBoard :: Member Rand r => Eff r Board
-newBoard = liftM fromJust . randomPlace . fromJust =<< randomPlace (fromLists [])
+newBoard :: (Member Rand r) => Eff r Board
+newBoard = fromRightU <$> runExc (randomPlace =<< randomPlace (fromLists []))
 
-randomPlace :: Member Rand r => Board -> Eff r (Maybe Board)
-randomPlace b =
-  case blanks b of
-    [] -> return Nothing
-    xs -> do
-      idx <- fromList $ map (,1) xs
-      new <- newBlock
-      return $ Just $ b & ix idx .~ Just new
+fromRightU :: Either () t -> t
+fromRightU (Right a) = a
+fromRightU (Left ()) = error "fromRightU"
+
+randomPlace :: (Member (Exc ()) r, Member Rand r) => Board -> Eff r Board
+randomPlace b = do
+  let xs = blanks b
+  when (null xs) $ throwExc ()
+  idx <- fromList $ map (,1) xs
+  new <- newBlock
+  return $ b & ix idx .~ Just new
 
 newBlock :: (Num a, Member Rand r) => Eff r a
 newBlock = fromList [(2, 0.9), (4, 0.1)]
