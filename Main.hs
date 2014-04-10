@@ -22,6 +22,7 @@ import           Data.Default
 import           Data.Monoid               ((<>))
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
+import Data.Color
 import           Data.Typeable             (Typeable (..))
 import           FRP.Sodium
 import qualified FRP.Sodium                as FRP
@@ -38,6 +39,8 @@ import Puzzle
 #else
 import Data.Typeable (Typeable1 (..))
 #endif
+import Control.Lens ((.~))
+import Data.Color.Names (red)
 
 keyLeftD :: Int
 keyLeftD = 37
@@ -85,11 +88,12 @@ main :: IO ()
 main = runLift $ evalRandIO $ do
   bd <- newBoard
   lift $ do
-    body <-  select "#main"
+    body <- select "body"
+    container <- select "#main"
     c <- select "<canvas id='theCanvas' width='180px' height='180px' />"
     label <- select "<div />"
-    appendJQuery c body
-    appendJQuery label body
+    appendJQuery c container
+    appendJQuery label container
     cxt <- getContext =<< indexArray 0 (castRef c)
     setWidth  180 c
     setHeight 180 c
@@ -115,17 +119,42 @@ updater dir gs = do
     bd' <- runLift $ runFail $ evalRandIO $ randomPlace (gs' ^. board)
     return $ gs' & maybe id (set board) bd'
 
+sqSize :: Double
+sqSize    = 40
+
+sqMargine :: Double
+sqMargine = 5
+
 drawBoard :: (SetMember Lift (Lift IO) r, Member (Reader Cxt) r) => Board -> Eff r ()
 drawBoard b = do
   readerT $ clearRect 0 0 180 180
   forM_ (withIndex b) $ \((j, i), mint) -> do
     readerT save
     readerT $ strokeStyle 0 0 0 1
-    readerT $ strokeRect (fromIntegral i * 45) (fromIntegral j * 45) 40 40
+    readerT $ strokeRect
+                (fromIntegral i * (sqSize + sqMargine))
+                (fromIntegral j * (sqSize + sqMargine))
+                sqSize sqSize
     readerT $ fillStyle 0 0 0 1
-    readerT $ maybe (const $ return ())
-      (\t -> fillText (T.pack $ show t) (fromIntegral i*45+20) (fromIntegral j*45+20)) mint
+    drawNumber (i, j) mint
     readerT $ restore
+
+drawNumber :: (SetMember Lift (Lift IO) r, Member (Reader Cxt) r)
+           => (Int, Int) -> Maybe Int -> Eff r ()
+drawNumber _ Nothing = return ()
+drawNumber (i, j) (Just t) = do
+  let str = T.pack $ show t
+  tw <- readerT $ measureText str
+  let x = (sqSize - tw) / 2
+      Color r g b _ = red & _Hue .~ (fromIntegral t - 1) / 2
+  readerT $ fillStyle (floor $ r*255) (floor $ g*255) (floor $ 255* b) 0.5
+  readerT $ fillRect
+    (fromIntegral i * (sqSize + sqMargine))
+    (fromIntegral j * (sqSize + sqMargine))
+    sqSize sqSize
+  readerT $ fillText str
+              (fromIntegral i*(sqSize+sqMargine) + x)
+              (fromIntegral j*(sqSize + sqMargine)+sqSize/2)
 
 keyDownEvent :: JQuery -> IO (FRP.Event Int)
 keyDownEvent par = do

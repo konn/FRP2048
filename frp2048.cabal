@@ -20,7 +20,8 @@ executable frp-2048
   other-modules:       Puzzle
                        Lens
   other-extensions:    TemplateHaskell
-  build-depends:       ghcjs-base >= 0.1.0.0,
+  build-depends:       colors >= 0.1.1,
+                       ghcjs-base >= 0.1.0.0,
                        data-default >= 0.5.3,
                        text >= 0.11.3.1,
                        ghcjs-canvas >= 0.1.0.0,
