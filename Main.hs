@@ -35,6 +35,8 @@ import Puzzle
 import Data.Typeable (Typeable1 (..))
 #endif
 import Control.Lens (view)
+import FRP.Sodium.IO (executeSyncIO)
+import Data.Maybe (fromMaybe)
 
 keyLeftD :: Int
 keyLeftD = 37
@@ -86,17 +88,23 @@ main = runLift $ evalRandIO $ do
     appendJQuery label body
     keyEvent <- keyDownEvent body
     sync $ do
-      let updEvent = (fst.) . shift <$> filterJust (flip lookup dic <$> keyEvent)
-      bhv <- accum bd updEvent
-      listen (value bhv) $ \b ->
+      let updEvent = updater <$> filterJust (flip lookup dic <$> keyEvent)
+      bhv <- accum (return bd) updEvent
+      listen (executeSyncIO $ value bhv) $ \b ->
         runLift $ runReader (drawBoard b) (Cxt cxt)
   return ()
 
+updater :: Direction -> IO Board -> IO Board
+updater dir bd0 = do
+  bd <- bd0
+  bd'  <- runLift $ evalRandIO $ randomPlace $ fst $ shift dir bd
+  return $ fromMaybe bd bd'
+
 drawBoard :: (SetMember Lift (Lift IO) r, Member (Reader Cxt) r) => Board -> Eff r ()
 drawBoard b = do
+  readerT $ clearRect 0 0 180 180
   forM_ (withIndex b) $ \((j, i), mint) -> do
     readerT save
-    readerT $ clearRect 0 0 180 180
     readerT $ strokeStyle 0 0 0 1
     readerT $ strokeRect (fromIntegral i * 45) (fromIntegral j * 45) 40 40
     readerT $ fillStyle 0 0 0 1
