@@ -37,6 +37,7 @@ import Data.Typeable (Typeable1 (..))
 import Control.Lens (view)
 import FRP.Sodium.IO (executeSyncIO)
 import Data.Maybe (fromMaybe)
+import Control.Eff.Fail (runFail)
 
 keyLeftD :: Int
 keyLeftD = 37
@@ -100,12 +101,12 @@ main = runLift $ evalRandIO $ do
 updater :: Direction -> IO Board -> IO Board
 updater dir bd0 = do
   bd_ <- bd0
-  let bd = fst $ shift dir bd
+  let bd = fst $ shift dir bd_
   if bd == bd_
     then return bd
     else do
-    --bd'  <- runLift $ evalRandIO $ randomPlace b 
-    --return $ fromMaybe bd bd'
+    bd'  <- runLift $ runFail $ evalRandIO $ randomPlace bd 
+    return $ fromMaybe bd bd'
     return bd
 
 drawBoard :: (SetMember Lift (Lift IO) r, Member (Reader Cxt) r) => Board -> Eff r ()
