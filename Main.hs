@@ -152,6 +152,7 @@ drawNumber (i, j) (Just t) = do
     (fromIntegral i * (sqSize + sqMargine))
     (fromIntegral j * (sqSize + sqMargine))
     sqSize sqSize
+  readerT $ fillStyle 0 0 0 1
   readerT $ fillText str
               (fromIntegral i*(sqSize+sqMargine) + x)
               (fromIntegral j*(sqSize + sqMargine)+sqSize/2)
