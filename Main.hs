@@ -11,11 +11,12 @@
 module Main where
 import           Control.Applicative       ((<$>))
 import           Control.Eff
-import           Control.Eff.Exception     (runExc)
+import           Control.Eff.Exception     (runExc, Exc)
 import           Control.Eff.Fresh         (Fresh, fresh)
 import           Control.Eff.Lift          (Lift, lift, runLift)
 import           Control.Eff.Random
 import           Control.Eff.Reader.Strict (Reader, ask, runReader)
+import           Control.Lens              ((&), (^.), set)
 import           Control.Monad             (forM_, void, (<=<))
 import           Data.Default
 import           Data.Monoid               ((<>))
@@ -37,11 +38,6 @@ import Puzzle
 #else
 import Data.Typeable (Typeable1 (..))
 #endif
-import Control.Lens ((.~))
-import Control.Lens ((&))
-import Control.Lens (set)
-import Control.Lens ((^.))
-import Control.Eff.Exception (Exc)
 
 keyLeftD :: Int
 keyLeftD = 37
@@ -89,7 +85,7 @@ main :: IO ()
 main = runLift $ evalRandIO $ do
   bd <- newBoard
   lift $ do
-    body <-  select "body"
+    body <-  select "#main"
     c <- select "<canvas id='theCanvas' width='180px' height='180px' />"
     label <- select "<div />"
     appendJQuery c body
