@@ -88,8 +88,11 @@ main = runLift $ evalRandIO $ do
     appendJQuery label body
     keyEvent <- keyDownEvent body
     sync $ do
-      let updEvent = updater <$> filterJust (flip lookup dic <$> keyEvent)
+      let dirEvent = filterJust (flip lookup dic <$> keyEvent)
+          updEvent = updater <$> dirEvent
       bhv <- accum (return bd) updEvent
+      listen dirEvent $ \d ->
+        void $ setText (T.pack $ show d) label
       listen (executeSyncIO $ value bhv) $ \b ->
         runLift $ runReader (drawBoard b) (Cxt cxt)
   return ()
