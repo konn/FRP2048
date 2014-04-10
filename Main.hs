@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses, OverloadedStrings, StandaloneDeriving #-}
-{-# LANGUAGE TypeSynonymInstances, ForeignFunctionInterface               #-}
+{-# LANGUAGE TypeSynonymInstances, RecursiveDo                            #-}
 #ifdef __GHCJS__
 {-# LANGUAGE JavaScriptFFI #-}
 #endif
@@ -10,13 +10,12 @@ module Main where
 import           Control.Applicative       ((<$>))
 import           Control.Eff
 import           Control.Eff.Exception     (runExc)
+import           Control.Eff.Fresh         (Fresh, fresh)
 import           Control.Eff.Lift          (Lift, lift, runLift)
 import           Control.Eff.Random
 import           Control.Eff.Reader.Strict (Reader, ask, runReader)
-import           Control.Lens              (view)
 import           Control.Monad             (forM_, void, (<=<))
 import           Data.Default
-import           Data.Maybe                (fromMaybe)
 import           Data.Monoid               ((<>))
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
@@ -27,8 +26,7 @@ import           FRP.Sodium.IO             (executeSyncIO)
 import           GHCJS.Foreign
 import           GHCJS.Types
 import           JavaScript.Canvas
-import           JavaScript.JQuery         hiding (not)
-import           Control.Eff.Fresh         (Fresh, fresh)
+import           JavaScript.JQuery         hiding (not, Event)
 
 import Puzzle
 
@@ -60,6 +58,12 @@ setStyleWidth :: Int -> Canvas -> IO ()
 setStyleWidth _ _ = error "jsffi"
 #endif
 
+accumMWith :: (Event (IO a) -> Event a)
+           -> a -> Event (a -> IO a)
+           -> Reactive (Behaviour a)
+accumMWith execIO z efa = do
+  rec s <- hold z $ execIO $ snapshot ($) efa s
+  return s
 
 dic :: [(Int, Direction)]
 dic = [(keyLeftD,  LeftD)
@@ -90,16 +94,15 @@ main = runLift $ evalRandIO $ do
     sync $ do
       let dirEvent = filterJust (flip lookup dic <$> keyEvent)
           updEvent = updater <$> dirEvent
-      bhv <- accum (return bd) updEvent
+      bhv <- accumMWith executeSyncIO bd updEvent
       listen dirEvent $ \d ->
         void $ setText (T.pack $ show d) label
-      listen (executeSyncIO $ value bhv) $ \b ->
+      listen (value bhv) $ \b ->
         runLift $ runReader (drawBoard b) (Cxt cxt)
   return ()
 
-updater :: Direction -> IO Board -> IO Board
-updater dir bd0 = do
-  bd_ <- bd0
+updater :: Direction -> Board -> IO Board
+updater dir bd_ = do
   let bd = fst $ shift dir bd_
   if bd == bd_
     then return bd
