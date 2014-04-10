@@ -146,7 +146,7 @@ drawNumber (i, j) (Just t) = do
   let str = T.pack $ show t
   tw <- readerT $ measureText str
   let x = (sqSize - tw) / 2
-      Color r g b _ = red & _Hue .~ 1 - recip (fromIntegral t - 1)
+      Color r g b _ = red & _Hue .~ 360*(1 - 2 * recip (fromIntegral t))
   readerT $ fillStyle (floor $ r*255) (floor $ g*255) (floor $ 255* b) 0.5
   readerT $ fillRect
     (fromIntegral i * (sqSize + sqMargine))
