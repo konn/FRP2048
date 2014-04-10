@@ -99,9 +99,14 @@ main = runLift $ evalRandIO $ do
 
 updater :: Direction -> IO Board -> IO Board
 updater dir bd0 = do
-  bd <- bd0
-  bd'  <- runLift $ evalRandIO $ randomPlace $ fst $ shift dir bd
-  return $ fromMaybe bd bd'
+  bd_ <- bd0
+  let bd = fst $ shift dir bd
+  if bd == bd_
+    then return bd
+    else do
+    --bd'  <- runLift $ evalRandIO $ randomPlace b 
+    --return $ fromMaybe bd bd'
+    return bd
 
 drawBoard :: (SetMember Lift (Lift IO) r, Member (Reader Cxt) r) => Board -> Eff r ()
 drawBoard b = do
