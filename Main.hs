@@ -1,6 +1,6 @@
 {-# LANGUAGE CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses, OverloadedStrings, StandaloneDeriving #-}
-{-# LANGUAGE TypeSynonymInstances                                         #-}
+{-# LANGUAGE TypeSynonymInstances, ForeignFunctionInterface               #-}
 #ifdef __GHCJS__
 {-# LANGUAGE JavaScriptFFI #-}
 #endif
@@ -9,24 +9,27 @@
 module Main where
 import           Control.Applicative       ((<$>))
 import           Control.Eff
-import           Control.Eff.Fresh         (Fresh, fresh, runFresh)
+import           Control.Eff.Exception     (runExc)
 import           Control.Eff.Lift          (Lift, lift, runLift)
 import           Control.Eff.Random
 import           Control.Eff.Reader.Strict (Reader, ask, runReader)
+import           Control.Lens              (view)
 import           Control.Monad             (forM_, void, (<=<))
 import           Data.Default
+import           Data.Maybe                (fromMaybe)
 import           Data.Monoid               ((<>))
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
 import           Data.Typeable             (Typeable (..))
 import           FRP.Sodium
 import qualified FRP.Sodium                as FRP
+import           FRP.Sodium.IO             (executeSyncIO)
 import           GHCJS.Foreign
 import           GHCJS.Types
 import           JavaScript.Canvas
 import           JavaScript.JQuery         hiding (not)
+import           Control.Eff.Fresh         (Fresh, fresh)
 
-import Lens
 import Puzzle
 
 #if MIN_VERSION_base(4,7,0)
@@ -34,10 +37,6 @@ import Puzzle
 #else
 import Data.Typeable (Typeable1 (..))
 #endif
-import Control.Lens (view)
-import FRP.Sodium.IO (executeSyncIO)
-import Data.Maybe (fromMaybe)
-import Control.Eff.Fail (runFail)
 
 keyLeftD :: Int
 keyLeftD = 37
@@ -105,8 +104,8 @@ updater dir bd0 = do
   if bd == bd_
     then return bd
     else do
-    bd'  <- runLift $ runFail $ evalRandIO $ randomPlace bd 
-    return $ fromMaybe bd bd'
+    bd'  <- runLift $ runExc $ evalRandIO $ randomPlace bd  :: IO (Either ()Board)
+    return $ either (const bd) id bd'
     return bd
 
 drawBoard :: (SetMember Lift (Lift IO) r, Member (Reader Cxt) r) => Board -> Eff r ()
