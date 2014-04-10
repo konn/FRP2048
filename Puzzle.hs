@@ -2,7 +2,7 @@
 {-# LANGUAGE MultiParamTypeClasses, NoMonomorphismRestriction, PatternGuards #-}
 {-# LANGUAGE RankNTypes, TemplateHaskell, TupleSections, TypeFamilies        #-}
 module Puzzle (Direction(..), Board, GameState(..), toLists, fromLists, newBlock
-              , shift, blanks, randomPlace, newBoard, board, score, withIndex
+              , shift, shiftGS, blanks, randomPlace, newBoard, board, score, withIndex
               ) where
 import Control.Applicative   ((<$>))
 import Control.Arrow         (second)
@@ -70,6 +70,11 @@ shift' xs = do
     step (a : b : bs)
       | a == b    = tell (Sum $ 2 * a) >> (2 * a :) <$> step bs
       | otherwise = (a :) <$> step (b:bs)
+
+shiftGS :: Direction -> GameState -> GameState
+shiftGS dir (GS bd sc) =
+  let (bd', sc') = shift dir bd
+  in GS bd' (sc+sc')
 
 shift :: Direction -> Board -> (Board, Int)
 shift dir b = second getSum $ runWriter $ do

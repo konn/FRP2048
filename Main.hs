@@ -1,3 +1,5 @@
+{-# LANGUAGE TypeOperators #-}
+{-# LANGUAGE TupleSections #-}
 {-# LANGUAGE CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses, OverloadedStrings, StandaloneDeriving #-}
 {-# LANGUAGE TypeSynonymInstances, RecursiveDo                            #-}
@@ -35,6 +37,11 @@ import Puzzle
 #else
 import Data.Typeable (Typeable1 (..))
 #endif
+import Control.Lens ((.~))
+import Control.Lens ((&))
+import Control.Lens (set)
+import Control.Lens ((^.))
+import Control.Eff.Exception (Exc)
 
 keyLeftD :: Int
 keyLeftD = 37
@@ -58,7 +65,7 @@ setStyleWidth :: Int -> Canvas -> IO ()
 setStyleWidth _ _ = error "jsffi"
 #endif
 
-accumMWith :: (Event (IO a) -> Event a)
+accumMWith :: (Event (IO a) -> Event a) -- ^ execution method for IO
            -> a -> Event (a -> IO a)
            -> Reactive (Behaviour a)
 accumMWith execIO z efa = do
@@ -83,32 +90,34 @@ main = runLift $ evalRandIO $ do
   bd <- newBoard
   lift $ do
     body <-  select "body"
-    label <- select "<div />"
     c <- select "<canvas id='theCanvas' width='180px' height='180px' />"
+    label <- select "<div />"
     appendJQuery c body
+    appendJQuery label body
     cxt <- getContext =<< indexArray 0 (castRef c)
     setWidth  180 c
     setHeight 180 c
-    appendJQuery label body
     keyEvent <- keyDownEvent body
     sync $ do
-      let dirEvent = filterJust (flip lookup dic <$> keyEvent)
-          updEvent = updater <$> dirEvent
-      bhv <- accumMWith executeSyncIO bd updEvent
-      listen dirEvent $ \d ->
-        void $ setText (T.pack $ show d) label
-      listen (value bhv) $ \b ->
-        runLift $ runReader (drawBoard b) (Cxt cxt)
+      let updEvent = updater <$> filterJust (flip lookup dic <$> keyEvent)
+      bhv <- accumMWith executeSyncIO (GS bd 0) updEvent
+      listen (value bhv) $ \gs -> do
+        runLift $ runReader (drawBoard $ gs ^. board) (Cxt cxt)
+        void $ setText ("Score: " <> T.pack (show $ gs ^. score)) label
   return ()
 
-updater :: Direction -> Board -> IO Board
-updater dir bd_ = do
-  let bd = fst $ shift dir bd_
-  if bd == bd_
-    then return bd
+runFail :: Eff (Exc () :> r) a -> Eff r (Maybe a)
+runFail act = either (const Nothing) Just <$> runExc act
+{-# INLINE runFail #-}
+
+updater :: Direction -> GameState -> IO GameState
+updater dir gs = do
+  let gs' = shiftGS dir gs
+  if gs' == gs
+    then return gs
     else do
-    bd'  <- runLift $ runExc $ evalRandIO $ randomPlace bd  :: IO (Either ()Board)
-    return $ either (const bd) id bd'
+    bd' <- runLift $ runFail $ evalRandIO $ randomPlace (gs' ^. board)
+    return $ gs' & maybe id (set board) bd'
 
 drawBoard :: (SetMember Lift (Lift IO) r, Member (Reader Cxt) r) => Board -> Eff r ()
 drawBoard b = do
