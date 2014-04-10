@@ -106,7 +106,6 @@ updater dir bd0 = do
     else do
     bd'  <- runLift $ runExc $ evalRandIO $ randomPlace bd  :: IO (Either ()Board)
     return $ either (const bd) id bd'
-    return bd
 
 drawBoard :: (SetMember Lift (Lift IO) r, Member (Reader Cxt) r) => Board -> Eff r ()
 drawBoard b = do
