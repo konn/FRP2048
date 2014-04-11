@@ -61,26 +61,32 @@ main = runLift $ evalRandIO $ do
   lift $ do
     body <- select "body"
     container <- select "#main"
-    c <- select "<canvas id='theCanvas' width='180px' height='180px' />"
+    c <- select $ T.concat [ "<canvas id='theCanvas' width='"
+                           , T.pack $ show canvasSize
+                           , "px' height='"
+                           , T.pack $ show canvasSize
+                           , "px' />"
+                           ]
     label <- select "<div />"
     appendJQuery c container
     appendJQuery label container
     cxt <- getContext =<< indexArray 0 (castRef c)
-    setWidth  180 c
-    setHeight 180 c
+    setWidth  canvasSize c
+    setHeight canvasSize c
     keyEvent <- keyDownEvent body
     sync $ do
       let updEvent = updater <$> filterJust (flip lookup dic <$> keyEvent)
       game <- accumMWith executeSyncIO (GS bd 0) updEvent
+      stopUpd <- listen (value game) $ \gs -> do
+        draw cxt (drawBoard $ gs ^. board)
+        void $ setText ("Score: " <> T.pack (show $ gs ^. score)) label
       let isMovable = movable <$> game
-      listen (once $ filterE not $ value isMovable) $ \_ ->
+      listen (once $ filterE not $ value isMovable) $ \_ -> do
+        stopUpd
         draw cxt $ locally $ do
           font "bold 30px/150"
           fillStyle 0 0 0 0.5
           fillText "GAME OVER" 0 90
-      listen (value game `gate` isMovable) $ \gs -> do
-        draw cxt (drawBoard $ gs ^. board)
-        void $ setText ("Score: " <> T.pack (show $ gs ^. score)) label
   return ()
 
 movable :: GameState -> Bool
@@ -100,19 +106,25 @@ updater dir gs = do
     return $ gs' & maybe id (set board) bd'
 
 sqSize :: Double
-sqSize    = 40
+sqSize    = 100
 
-sqMargine :: Double
-sqMargine = 5
+canvasSize :: Double
+canvasSize = sqSize * 4 + sqMargin * 3
+
+sqOffset :: Double
+sqOffset = sqSize + sqMargin
+
+sqMargin :: Double
+sqMargin = 5
 
 drawBoard :: (SetMember Lift (Lift IO) r, Member (Reader Context) r) => Board -> Eff r ()
 drawBoard b = locally $ do
-  clearRect 0 0 180 180
+  clearRect 0 0 canvasSize canvasSize
   forM_ (withIndex b) $ \((j, i), mint) -> locally $ do
     strokeStyle 0 0 0 1
     strokeRect
-      (fromIntegral i * (sqSize + sqMargine))
-      (fromIntegral j * (sqSize + sqMargine))
+      (fromIntegral i * sqOffset)
+      (fromIntegral j * sqOffset)
       sqSize sqSize
     fillStyle 0 0 0 1
     drawNumber (i, j) mint
@@ -120,19 +132,20 @@ drawBoard b = locally $ do
 drawNumber :: (Integral t, Integral a, Integral a1, Show t, SetMember Lift (Lift IO) r, Member (Reader Context) r) => (a, a1) -> Maybe t -> Eff r ()
 drawNumber _ Nothing = return ()
 drawNumber (i, j) (Just t) = locally $ do
-  let str = T.pack $ show t
+  let str  = T.pack $ show t
+      size = floor $ sqSize *0.8 / fromIntegral (T.length str)
+  font $ T.pack (show size) <> "px"
   tw <- measureText str
   let x = (sqSize - tw) / 2
       Color r g b _ = red & _Hue .~ 360 * (logBase 2 (fromIntegral t) - 1) / 10
   fillStyle (floor $ r*255) (floor $ g*255) (floor $ 255* b) 0.5
-  fillRect
-    (fromIntegral i * (sqSize + sqMargine))
-    (fromIntegral j * (sqSize + sqMargine))
+  fillRect (fromIntegral i * (sqOffset))
+    (fromIntegral j * (sqOffset))
     sqSize sqSize
   fillStyle 0 0 0 1
   fillText str
-    (fromIntegral i*(sqSize+sqMargine) + x)
-    (fromIntegral j*(sqSize + sqMargine)+sqSize/2)
+    (fromIntegral i*(sqOffset) + x)
+    (fromIntegral j*(sqOffset)+sqSize/2)
 
 keyDownEvent :: JQuery -> IO (FRP.Event Int)
 keyDownEvent par = do
