@@ -13,9 +13,9 @@ import           Data.Monoid              (mempty)
 import qualified Data.Text.Lazy           as T
 import           Diagrams.Backend.SVG
 import           Diagrams.Prelude         (Any, Path, QDiagram, R2, Renderable)
-import           Diagrams.Prelude         (atop, fc, hcat', lc, sep, vcat')
-import           Diagrams.Prelude         (square, text, ( # ))
-import           Diagrams.Prelude         (SizeSpec2D (..), renderDia)
+import           Diagrams.Prelude         (SizeSpec2D (..), atop, fc, hcat', lc)
+import           Diagrams.Prelude         (lw, renderDia, sep, square, text)
+import           Diagrams.Prelude         (vcat', ( # ))
 import qualified Diagrams.TwoD.Text       as D
 import           Puzzle
 import           Text.Blaze.Renderer.Text (renderMarkup)
@@ -49,7 +49,7 @@ drawCell :: (Renderable D.Text b, Renderable (Path R2) b)
          => Maybe Int -> QDiagram b R2 Any
 drawCell mint =
   let num  = maybe mempty (text . show) mint
-      cell = square sqSize # fc (calcHue mint) # lc C.black
+      cell = square sqSize # fc (calcHue mint) # lc C.black # lw 1.0
   in num `atop` cell
 
 calcHue :: Maybe Int -> C.Colour Double
