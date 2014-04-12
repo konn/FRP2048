@@ -14,7 +14,7 @@ import Control.Monad         (liftM, when)
 import Control.Monad.Writer  (Writer, runWriter, tell)
 import Data.List             (transpose)
 import Data.Maybe            (catMaybes, isNothing)
-import Data.Monoid           (Sum (..))
+import Data.Monoid           (Sum (..), (<>))
 import Data.Typeable
 
 newtype Board =

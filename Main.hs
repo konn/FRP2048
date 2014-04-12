@@ -1,9 +1,12 @@
 {-# LANGUAGE DeriveDataTypeable, FlexibleContexts, FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses, OverloadedStrings, RecursiveDo   #-}
 {-# LANGUAGE StandaloneDeriving, TupleSections, TypeOperators        #-}
-{-# LANGUAGE TypeSynonymInstances                                    #-}
+{-# LANGUAGE TypeSynonymInstances, CPP                              #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults -fno-warn-unused-do-bind #-}
 {-# OPTIONS_GHC -fno-warn-wrong-do-bind -fno-warn-orphans #-}
+#ifdef __GHCJS__
+{-# LANGUAGE JavaScriptFFI #-}
+#endif
 module Main where
 import           Control.Applicative       ((<$>))
 import           Control.Eff
@@ -11,26 +14,43 @@ import           Control.Eff.Exception     (Exc, runExc)
 import           Control.Eff.Fresh         (Fresh, fresh)
 import           Control.Eff.Lift          (Lift, lift, runLift)
 import           Control.Eff.Random
-import           Control.Eff.Reader.Strict (Reader)
-import           Control.Lens              (set, (&), (.~), (^.))
-import           Control.Monad             (forM_, void, (<=<))
+import           Control.Lens              (set, (&), (^.))
+import           Control.Monad             (void, (<=<))
 import           Control.Monad.Fix         (mfix)
-import           Data.Color
-import           Data.Color.Names          (red)
 import           Data.Default
 import           Data.Monoid               ((<>))
 import           Data.Text                 (Text)
 import qualified Data.Text                 as T
-import           Data.Typeable             (Typeable (..))
 import           FRP.Sodium
 import qualified FRP.Sodium                as FRP
 import           FRP.Sodium.IO             (executeSyncIO)
-import           GHCJS.Foreign
 import           GHCJS.Types
 import           JavaScript.JQuery         hiding (Event, not)
 
-import Drawer
+import DiagramsBackend
 import Puzzle
+import GHCJS.DOM.Element (Element)
+
+#ifdef __GHCJS__
+-- create an element in the SVG namespace
+foreign import javascript unsafe "document.createElementNS('http://www.w3.org/2000/svg',$1)"
+   createSvg :: JSString -> IO Element
+foreign import javascript unsafe "document.getElementsByTagName($1)"
+   getElementsByTagName :: JSString -> IO (JSArray a)
+foreign import javascript unsafe "$3.setAttribute($1,$2)"
+   setAttribute :: JSString -> JSRef a -> JSRef b -> IO ()
+foreign import javascript unsafe "$2.appendChild($1)"
+   appendChild :: Element -> Element -> IO ()
+#else
+createSvg :: JSString -> IO Element
+createSvg = undefined
+appendChild :: Element -> Element -> IO ()
+appendChild = undefined
+getElementsByTagName :: JSString -> IO (JSArray a)
+getElementsByTagName = undefined
+setAttribute :: JSString -> JSRef a -> JSRef b -> IO ()
+setAttribute = undefined
+#endif
 
 keyLeftD :: Int
 keyLeftD = 37
@@ -53,36 +73,27 @@ dic = [(keyLeftD,  LeftD)
       ,(keyDownD,  DownD)
       ]
 
-newtype Cxt  = Cxt { unwrapCxt :: Context } deriving (Typeable)
-
 main :: IO ()
 main = runLift $ evalRandIO $ do
   bd <- newBoard
   lift $ do
     body <- select "body"
     container <- select "#main"
-    c <- select $ T.concat ["<canvas id='theCanvas' width='"
-                           ,T.pack $ show canvasSize
-                           ,"px' height='"
-                           ,T.pack $ show canvasSize
-                           ,"px' />"
-                           ]
+    c <- selectElement =<< createSvg "svg"
     label <- select "<div />"
     appendJQuery c container
     appendJQuery label container
-    cxt <- getContext =<< indexArray 0 (castRef c)
-    setWidth  canvasSize c
-    setHeight canvasSize c
     keyEvent <- keyDownEvent body
     sync $ do
       let updEvent = updater <$> filterJust (flip lookup dic <$> keyEvent)
       game <- accumMWith executeSyncIO (GS bd 0) updEvent
       stopUpd <- listen (value game) $ \gs -> do
-        draw cxt (drawBoard $ gs ^. board)
+        renderBoard (gs ^. board) c
         void $ setText ("Score: " <> T.pack (show $ gs ^. score)) label
       let isMovable = movable <$> game
       listen (once $ filterE not $ value isMovable) $ \_ -> do
         stopUpd
+{-
         draw cxt $ locally $ do
           let msg = "GAME OVER"
               pxs = canvasSize * 0.75 / fromIntegral (T.length msg)
@@ -91,6 +102,7 @@ main = runLift $ evalRandIO $ do
           fillStyle 0 0 0 0.75
           fSize <- measureText msg
           fillText msg ((canvasSize - fSize) / 2) (canvasSize / 2)
+-}
   return ()
 
 movable :: GameState -> Bool
@@ -120,41 +132,6 @@ sqOffset = sqSize + sqMargin
 
 canvasSize :: Double
 canvasSize = sqMargin*3 + sqSize*4
-
-drawBoard :: (SetMember Lift (Lift IO) r, Member (Reader Context) r) => Board -> Eff r ()
-drawBoard b = locally $ do
-  clearRect 0 0 canvasSize canvasSize
-  forM_ (withIndex b) $ \((j, i), mint) -> locally $ do
-    strokeStyle 0 0 0 1
-    strokeRect
-      (fromIntegral i * sqOffset)
-      (fromIntegral j * sqOffset)
-      sqSize sqSize
-    fillStyle 0 0 0 1
-    drawNumber (i, j) mint
-
-logBase' :: Floating a => a -> a -> a
-logBase' a b = log b / log a
-
-drawNumber :: (Integral t, Integral a, Integral a1, Show t, SetMember Lift (Lift IO) r, Member (Reader Context) r) => (a, a1) -> Maybe t -> Eff r ()
-drawNumber _ Nothing = return ()
-drawNumber (i, j) (Just t) = locally $ do
-  let str = T.pack $ show t
-      pxs = floor $ (sqSize*3/4) / fromIntegral (T.length str)
-  font $ "bold " <> T.pack (show pxs) <> "px roman"
-  tw <- measureText str
-  textBaseline Middle
-  let x = (sqSize - tw) / 2
-      Color r g b _ = red & _Hue .~ 360 * (logBase' 2 (fromIntegral t) - 1) / 10
-  fillStyle (floor $ r*255) (floor $ g*255) (floor $ 255* b) 0.5
-  fillRect
-    (fromIntegral i * sqOffset)
-    (fromIntegral j * sqOffset)
-    sqSize sqSize
-  fillStyle 0 0 0 1
-  fillText str
-    (fromIntegral i*sqOffset + x)
-    (fromIntegral j*sqOffset+sqSize/2)
 
 keyDownEvent :: JQuery -> IO (FRP.Event Int)
 keyDownEvent par = do
