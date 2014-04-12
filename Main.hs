@@ -86,6 +86,7 @@ main = runLift $ evalRandIO $ do
         draw cxt $ locally $ do
           let msg = "GAME OVER"
               pxs = canvasSize * 0.75 / fromIntegral (T.length msg)
+          textBaseline Middle
           font $ "bold " <> T.pack (show pxs) <> "px roman"
           fillStyle 0 0 0 0.75
           fSize <- measureText msg
@@ -142,6 +143,7 @@ drawNumber (i, j) (Just t) = locally $ do
       pxs = floor $ (sqSize*3/4) / fromIntegral (T.length str)
   font $ "bold " <> T.pack (show pxs) <> "px roman"
   tw <- measureText str
+  textBaseline Middle
   let x = (sqSize - tw) / 2
       Color r g b _ = red & _Hue .~ 360 * (logBase' 2 (fromIntegral t) - 1) / 10
   fillStyle (floor $ r*255) (floor $ g*255) (floor $ 255* b) 0.5
