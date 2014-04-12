@@ -84,8 +84,8 @@ main = runLift $ evalRandIO $ do
       listen (once $ filterE not $ value isMovable) $ \_ -> do
         stopUpd
         draw cxt $ locally $ do
-          font "bold 30px/150"
-          fillStyle 0 0 0 0.5
+          font "bold 150px/150"
+          fillStyle 0 0 0 0.75
           fSize <- measureText "GAME OVER"
           fillText "GAME OVER" ((canvasSize - fSize) / 2) (canvasSize / 2)
   return ()
@@ -137,7 +137,8 @@ drawNumber :: (Integral t, Integral a, Integral a1, Show t, SetMember Lift (Lift
 drawNumber _ Nothing = return ()
 drawNumber (i, j) (Just t) = locally $ do
   let str = T.pack $ show t
-  font "bold 20px/150"
+      pxs = floor $ (sqSize*3/4) / fromIntegral (T.length str)
+  font $ "bold " <> T.pack (show pxs) <> "20px/150"
   tw <- measureText str
   let x = (sqSize - tw) / 2
       Color r g b _ = red & _Hue .~ 360 * (logBase' 2 (fromIntegral t) - 1) / 10
