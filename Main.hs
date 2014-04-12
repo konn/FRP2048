@@ -138,7 +138,7 @@ drawNumber _ Nothing = return ()
 drawNumber (i, j) (Just t) = locally $ do
   let str = T.pack $ show t
       pxs = floor $ (sqSize*3/4) / fromIntegral (T.length str)
-  font $ "bold " <> T.pack (show pxs) <> "20px/150"
+  font $ "bold " <> T.pack (show pxs) <> "px/150"
   tw <- measureText str
   let x = (sqSize - tw) / 2
       Color r g b _ = red & _Hue .~ 360 * (logBase' 2 (fromIntegral t) - 1) / 10
