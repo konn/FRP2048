@@ -25,6 +25,8 @@ import           FRP.Sodium
 import qualified FRP.Sodium                as FRP
 import           FRP.Sodium.IO             (executeSyncIO)
 import           GHCJS.Types
+import           GHCJS.Foreign
+import           GHCJS.Marshal
 import           JavaScript.JQuery         hiding (Event, not)
 
 import DiagramsBackend
