@@ -34,7 +34,7 @@ canvasSize = sqMargin*3 + sqSize*4
 
 renderBoard :: Board -> JQuery -> IO JQuery
 renderBoard bd el =
-   let opts = SVGOptions (Dims canvasSize canvasSize) Nothing
+   let opts = SVGOptions Absolute Nothing
        svg = T.toStrict $ renderMarkup $  renderDia SVG opts $ drawBoard $ bd
    in setHtml svg el
 
