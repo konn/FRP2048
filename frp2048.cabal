@@ -22,7 +22,8 @@ executable frp-2048
                        Drawer
                        DiagramsBackend
   other-extensions:    TemplateHaskell
-  build-depends:       ghcjs-dom >= 0.0.4,
+  build-depends:       SVGFonts >= 1.4.0.2,
+                       ghcjs-dom >= 0.0.4,
                        blaze-markup >= 0.6.0.0,
                        blaze-svg >= 0.3.3.1,
                        colour >= 2.3.3,
