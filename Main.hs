@@ -77,16 +77,17 @@ main = runLift $ evalRandIO $ do
     sync $ do
       let updEvent = updater <$> filterJust (flip lookup dic <$> keyEvent)
       game <- accumMWith executeSyncIO (GS bd 0) updEvent
+      stopUpd <- listen (value game) $ \gs -> do
+        draw cxt (drawBoard $ gs ^. board)
+        void $ setText ("Score: " <> T.pack (show $ gs ^. score)) label
       let isMovable = movable <$> game
-      listen (once $ filterE not $ value isMovable) $ \_ ->
+      listen (once $ filterE not $ value isMovable) $ \_ -> do
+        stopUpd
         draw cxt $ locally $ do
           font "bold 30px/150"
           fillStyle 0 0 0 0.5
           fSize <- measureText "GAME OVER"
           fillText "GAME OVER" ((canvasSize - fSize) / 2) (canvasSize / 2)
-      listen (value game `gate` isMovable) $ \gs -> do
-        draw cxt (drawBoard $ gs ^. board)
-        void $ setText ("Score: " <> T.pack (show $ gs ^. score)) label
   return ()
 
 movable :: GameState -> Bool
@@ -129,14 +130,17 @@ drawBoard b = locally $ do
     fillStyle 0 0 0 1
     drawNumber (i, j) mint
 
+logBase' :: Floating a => a -> a -> a
+logBase' a b = log b / log a
 
 drawNumber :: (Integral t, Integral a, Integral a1, Show t, SetMember Lift (Lift IO) r, Member (Reader Context) r) => (a, a1) -> Maybe t -> Eff r ()
 drawNumber _ Nothing = return ()
 drawNumber (i, j) (Just t) = locally $ do
   let str = T.pack $ show t
+  font "bold 20px/150"
   tw <- measureText str
   let x = (sqSize - tw) / 2
-      Color r g b _ = red & _Hue .~ 360 * (logBase 2 (fromIntegral t) - 1) / 10
+      Color r g b _ = red & _Hue .~ 360 * (logBase' 2 (fromIntegral t) - 1) / 10
   fillStyle (floor $ r*255) (floor $ g*255) (floor $ 255* b) 0.5
   fillRect
     (fromIntegral i * sqOffset)
