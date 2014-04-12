@@ -1,58 +1,41 @@
-{-# LANGUAGE DeriveDataTypeable, FlexibleContexts, FlexibleInstances #-}
-{-# LANGUAGE MultiParamTypeClasses, OverloadedStrings, RecursiveDo   #-}
-{-# LANGUAGE StandaloneDeriving, TupleSections, TypeOperators        #-}
-{-# LANGUAGE TypeSynonymInstances, CPP, ForeignFunctionInterface     #-}
+{-# LANGUAGE CPP, DeriveDataTypeable, FlexibleContexts, FlexibleInstances #-}
+{-# LANGUAGE MultiParamTypeClasses, OverloadedStrings, RecursiveDo        #-}
+{-# LANGUAGE StandaloneDeriving, TupleSections, TypeOperators             #-}
+{-# LANGUAGE TypeSynonymInstances                                         #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults -fno-warn-unused-do-bind #-}
 {-# OPTIONS_GHC -fno-warn-wrong-do-bind -fno-warn-orphans #-}
-#ifdef __GHCJS__
-{-# LANGUAGE JavaScriptFFI #-}
-#endif
 module Main where
-import           Control.Applicative       ((<$>))
+import           Control.Applicative   ((<$>))
 import           Control.Eff
-import           Control.Eff.Exception     (Exc, runExc)
-import           Control.Eff.Fresh         (Fresh, fresh)
-import           Control.Eff.Lift          (Lift, lift, runLift)
+import           Control.Eff.Exception (Exc, runExc)
+import           Control.Eff.Fresh     (Fresh, fresh)
+import           Control.Eff.Lift      (Lift, lift, runLift)
 import           Control.Eff.Random
-import           Control.Lens              (set, (&), (^.))
-import           Control.Monad             (void, (<=<))
-import           Control.Monad.Fix         (mfix)
+import           Control.Lens          (set, (&), (^.))
+import           Control.Monad         (void, (<=<))
+import           Control.Monad.Fix     (mfix)
 import           Data.Default
-import           Data.Monoid               ((<>))
-import           Data.Text                 (Text)
-import qualified Data.Text                 as T
+import           Data.Maybe            (fromJust)
+import           Data.Monoid           ((<>))
+import           Data.Text             (Text)
+import qualified Data.Text             as T
 import           FRP.Sodium
-import qualified FRP.Sodium                as FRP
-import           FRP.Sodium.IO             (executeSyncIO)
-import           GHCJS.Types
-import           GHCJS.Foreign
-import           GHCJS.Marshal
-import           JavaScript.JQuery         hiding (Event, not)
+import qualified FRP.Sodium            as FRP
+import           FRP.Sodium.IO         (executeSyncIO)
+import           JavaScript.JQuery     hiding (Event, not)
+
+import GHCJS.DOM          (currentDocument)
+import GHCJS.DOM.Document (documentCreateElementNS)
+import GHCJS.DOM.Types    (Element)
 
 import DiagramsBackend
 import Puzzle
-import GHCJS.DOM.Element (Element)
 
-#ifdef __GHCJS__
--- create an element in the SVG namespace
-foreign import javascript unsafe "document.createElementNS('http://www.w3.org/2000/svg',$1)"
-   createSvg :: JSString -> IO Element
-foreign import javascript unsafe "document.getElementsByTagName($1)"
-   getElementsByTagName :: JSString -> IO (JSArray a)
-foreign import javascript unsafe "$3.setAttribute($1,$2)"
-   setAttribute :: JSString -> JSRef a -> JSRef b -> IO ()
-foreign import javascript unsafe "$2.appendChild($1)"
-   appendChild :: Element -> Element -> IO ()
-#else
-createSvg :: JSString -> IO Element
-createSvg = undefined
-appendChild :: Element -> Element -> IO ()
-appendChild = undefined
-getElementsByTagName :: JSString -> IO (JSArray a)
-getElementsByTagName = undefined
-setAttribute :: JSString -> JSRef a -> JSRef b -> IO ()
-setAttribute = undefined
-#endif
+-- | create an element in the SVG namespace
+createSvg :: String -> IO (Maybe Element)
+createSvg n = do
+    Just doc <- currentDocument
+    documentCreateElementNS doc ("http://www.w3.org/2000/svg"::String) n
 
 keyLeftD :: Int
 keyLeftD = 37
@@ -81,7 +64,7 @@ main = runLift $ evalRandIO $ do
   lift $ do
     body <- select "body"
     container <- select "#main"
-    c <- selectElement =<< createSvg "svg"
+    c <- selectElement . fromJust =<< createSvg "svg"
     label <- select "<div />"
     appendJQuery c container
     appendJQuery label container
