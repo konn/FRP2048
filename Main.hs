@@ -1,7 +1,7 @@
 {-# LANGUAGE DeriveDataTypeable, FlexibleContexts, FlexibleInstances #-}
 {-# LANGUAGE MultiParamTypeClasses, OverloadedStrings, RecursiveDo   #-}
 {-# LANGUAGE StandaloneDeriving, TupleSections, TypeOperators        #-}
-{-# LANGUAGE TypeSynonymInstances, CPP                              #-}
+{-# LANGUAGE TypeSynonymInstances, CPP, ForeignFunctionInterface     #-}
 {-# OPTIONS_GHC -fno-warn-type-defaults -fno-warn-unused-do-bind #-}
 {-# OPTIONS_GHC -fno-warn-wrong-do-bind -fno-warn-orphans #-}
 #ifdef __GHCJS__
