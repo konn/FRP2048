@@ -84,10 +84,12 @@ main = runLift $ evalRandIO $ do
       listen (once $ filterE not $ value isMovable) $ \_ -> do
         stopUpd
         draw cxt $ locally $ do
-          font "bold 150px/150"
+          let msg = "GAME OVER"
+              pxs = canvasSize * 0.75 / fromIntegral (T.length msg)
+          font $ "bold " <> T.pack (show pxs) <> "px roman"
           fillStyle 0 0 0 0.75
-          fSize <- measureText "GAME OVER"
-          fillText "GAME OVER" ((canvasSize - fSize) / 2) (canvasSize / 2)
+          fSize <- measureText msg
+          fillText msg ((canvasSize - fSize) / 2) (canvasSize / 2)
   return ()
 
 movable :: GameState -> Bool
@@ -138,7 +140,7 @@ drawNumber _ Nothing = return ()
 drawNumber (i, j) (Just t) = locally $ do
   let str = T.pack $ show t
       pxs = floor $ (sqSize*3/4) / fromIntegral (T.length str)
-  font $ "bold " <> T.pack (show pxs) <> "px/150"
+  font $ "bold " <> T.pack (show pxs) <> "px roman"
   tw <- measureText str
   let x = (sqSize - tw) / 2
       Color r g b _ = red & _Hue .~ 360 * (logBase' 2 (fromIntegral t) - 1) / 10
