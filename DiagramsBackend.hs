@@ -18,6 +18,7 @@ import           Diagrams.Prelude         (fc, hcat', lc, lw, renderDia, sep)
 import           Diagrams.Prelude         (square, stroke, vcat', ( # ))
 import           Graphics.SVGFonts
 import           JavaScript.JQuery        (JQuery, setHeight, setHtml, setWidth)
+import           JavaScript.JQuery        (replaceWith)
 import           Puzzle
 import           Text.Blaze.Renderer.Text (renderMarkup)
 
@@ -34,7 +35,7 @@ renderBoard :: Board -> JQuery -> IO JQuery
 renderBoard bd el = do
   let opts = SVGOptions Absolute Nothing
       svg = T.toStrict $ renderMarkup $  renderDia SVG opts $ drawBoard $ bd
-  setHtml svg el
+  replaceWith svg el
   setWidth  canvasSize el
   setHeight canvasSize el
 
